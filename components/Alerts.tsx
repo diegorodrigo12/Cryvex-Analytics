@@ -8,16 +8,19 @@ interface AlertsProps {
   cryptos: CryptoCurrency[];
   pendingAlert: {coinId: string, intent: 'buy' | 'sell'} | null;
   clearPending: () => void;
+  currency: 'usd' | 'brl';
 }
 
-const Alerts: React.FC<AlertsProps> = ({ alerts, setAlerts, cryptos, pendingAlert, clearPending }) => {
+const Alerts: React.FC<AlertsProps> = ({ alerts, setAlerts, cryptos, pendingAlert, clearPending, currency }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [newAlert, setNewAlert] = useState<{coinId: string, val: number, condition: string, intent: 'buy' | 'sell'}>({
-    coinId: cryptos[0].id,
+    coinId: cryptos[0]?.id || 'bitcoin',
     val: 0,
     condition: 'price_above',
     intent: 'buy'
   });
+
+  const symbol = currency === 'brl' ? 'R$' : '$';
 
   useEffect(() => {
     if (pendingAlert) {
@@ -51,13 +54,13 @@ const Alerts: React.FC<AlertsProps> = ({ alerts, setAlerts, cryptos, pendingAler
     setAlerts(alerts.filter(a => a.id !== id));
   };
 
-  const getIconUrl = (symbol: string) => `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${symbol.toLowerCase()}.png`;
+  const getIconUrl = (symbolStr: string) => `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${symbolStr.toLowerCase()}.png`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Centro de Alertas de Trading</h2>
+          <h2 className="text-2xl font-bold text-white">Centro de Alertas ({currency.toUpperCase()})</h2>
           <p className="text-slate-500 text-sm">Gerencie suas ordens de compra e venda automatizadas.</p>
         </div>
         <button 
@@ -112,15 +115,15 @@ const Alerts: React.FC<AlertsProps> = ({ alerts, setAlerts, cryptos, pendingAler
                 value={newAlert.condition}
                 onChange={(e) => setNewAlert({...newAlert, condition: e.target.value})}
               >
-                <option value="price_above">Preço ACIMA de ($)</option>
-                <option value="price_below">Preço ABAIXO de ($)</option>
+                <option value="price_above">Preço ACIMA de ({symbol})</option>
+                <option value="price_below">Preço ABAIXO de ({symbol})</option>
                 <option value="rsi_level">RSI atinge (0-100)</option>
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-xs text-slate-500 uppercase font-bold tracking-wider">Valor Alvo</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-slate-500 font-mono text-sm">$</span>
+                <span className="absolute left-3 top-3.5 text-slate-500 font-mono text-sm">{symbol}</span>
                 <input 
                   type="number" 
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 pl-7 text-slate-200 font-mono focus:ring-2 focus:ring-indigo-500/50 outline-none" 
@@ -180,14 +183,14 @@ const Alerts: React.FC<AlertsProps> = ({ alerts, setAlerts, cryptos, pendingAler
                       </span>
                     </div>
                     <p className="text-sm text-slate-500">
-                      Disparo: <span className="text-slate-300">{alert.condition.replace('price_', '').replace('level', '').replace('_', ' ')}</span> de <span className="font-mono text-indigo-400 font-bold">${alert.value.toLocaleString()}</span>
+                      Disparo: <span className="text-slate-300">{alert.condition.replace('price_', '').replace('level', '').replace('_', ' ')}</span> de <span className="font-mono text-indigo-400 font-bold">{symbol}{alert.value.toLocaleString()}</span>
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right hidden sm:block">
                     <p className="text-[10px] text-slate-500 uppercase font-bold">Preço Atual</p>
-                    <p className="font-mono text-sm">${coin?.price.toLocaleString()}</p>
+                    <p className="font-mono text-sm">{symbol}{coin?.price.toLocaleString()}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={() => removeAlert(alert.id)} className="p-3 text-slate-500 hover:text-rose-400 transition-all rounded-xl hover:bg-rose-500/10">

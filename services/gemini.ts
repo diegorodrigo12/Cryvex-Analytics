@@ -2,14 +2,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { CryptoCurrency } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Função para obter a instância do AI com segurança
+const getAiInstance = () => {
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 export const analyzeMarket = async (coin: CryptoCurrency): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return `Análise Simulada para ${coin.name}: Baseado no RSI de ${coin.rsi} e na tendência ${coin.trend}, o ativo demonstra um momentum de força ${coin.strength}. Recomendamos cautela em níveis de suporte chave.`;
-  }
-
   try {
+    const ai = getAiInstance();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `

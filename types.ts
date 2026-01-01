@@ -4,6 +4,7 @@ export interface CryptoCurrency {
   symbol: string;
   name: string;
   price: number;
+  image: string; // Nova propriedade para ícones estáveis
   change1h: number;
   change24h: number;
   change7d: number;
@@ -25,7 +26,7 @@ export interface Alert {
   value: number;
   active: boolean;
   createdAt: number;
-  intent?: 'buy' | 'sell'; // New: distinguish between buy/sell targets
+  intent?: 'buy' | 'sell'; 
 }
 
 export interface NewsItem {
@@ -43,4 +44,8 @@ export type View = 'dashboard' | 'detail' | 'alerts' | 'news' | 'premium';
 export interface MarketHistory {
   time: string;
   price: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
 }

@@ -6,10 +6,15 @@ interface DashboardProps {
   cryptos: CryptoCurrency[];
   onSelectCoin: (id: string) => void;
   onCreateAlert: (id: string, intent: 'buy' | 'sell') => void;
+  currency: 'usd' | 'brl';
+  isUpdating?: boolean;
+  lastUpdated?: number;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAlert }) => {
-  const [filter, setFilter] = useState<'all' | 'gainers' | 'losers'>('all');
+const MEMECOIN_LIST = ['DOGE', 'SHIB', 'PEPE', 'FLOKI', 'BONK', 'WIF', 'MYRO', 'MEME', 'COQ', 'BOME'];
+
+const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAlert, currency, isUpdating, lastUpdated }) => {
+  const [filter, setFilter] = useState<'all' | 'gainers' | 'losers' | 'memes'>('all');
   const [search, setSearch] = useState('');
 
   const filteredCryptos = [...cryptos]
@@ -19,17 +24,18 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
   const displayCryptos = filteredCryptos.filter(c => {
     if (filter === 'gainers') return c.change24h > 0;
     if (filter === 'losers') return c.change24h < 0;
+    if (filter === 'memes') return MEMECOIN_LIST.includes(c.symbol);
     return true;
   });
 
-  const getIconUrl = (symbol: string) => `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${symbol.toLowerCase()}.png`;
+  const symbol = currency === 'brl' ? 'R$' : '$';
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-sm hover:border-indigo-500/30 transition-colors">
           <p className="text-slate-500 text-sm mb-1 uppercase tracking-wider font-semibold">Market Cap Global</p>
-          <h3 className="text-2xl font-bold text-white">$2.45T</h3>
+          <h3 className="text-2xl font-bold text-white">{symbol}2.45T</h3>
           <div className="mt-2 text-xs flex items-center gap-1">
             <span className="text-emerald-400 font-medium">↑ 1.2%</span>
             <span className="text-slate-600">nas últimas 24h</span>
@@ -55,8 +61,19 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
       <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
         <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h3 className="text-lg font-bold text-white">Mercado em Tempo Real</h3>
-            <p className="text-xs text-slate-500">Dados ao vivo via CoinGecko</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white">Mercado em Tempo Real ({currency.toUpperCase()})</h3>
+              {isUpdating && <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-500">Dados ao vivo via CoinGecko</p>
+              {lastUpdated && (
+                <>
+                  <span className="text-slate-700">•</span>
+                  <p className="text-[10px] text-slate-500 font-mono">Atualizado: {new Date(lastUpdated).toLocaleTimeString()}</p>
+                </>
+              )}
+            </div>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -68,29 +85,32 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <svg className="w-4 h-4 absolute right-3 top-2.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
             </div>
 
-            <div className="flex gap-2 p-1 bg-slate-800 rounded-xl">
+            <div className="flex gap-1 p-1 bg-slate-800 rounded-xl overflow-x-auto custom-scrollbar">
               <button 
                 onClick={() => setFilter('all')}
-                className={`px-4 py-1.5 text-xs rounded-lg transition-all font-medium ${filter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 Todos
               </button>
               <button 
-                onClick={() => setFilter('gainers')}
-                className={`px-4 py-1.5 text-xs rounded-lg transition-all font-medium ${filter === 'gainers' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                onClick={() => setFilter('memes')}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'memes' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Ganhadores
+                Memecoins 🐕
+              </button>
+              <button 
+                onClick={() => setFilter('gainers')}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'gainers' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Altas
               </button>
               <button 
                 onClick={() => setFilter('losers')}
-                className={`px-4 py-1.5 text-xs rounded-lg transition-all font-medium ${filter === 'losers' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'losers' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Perdedores
+                Baixas
               </button>
             </div>
           </div>
@@ -104,8 +124,7 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                 <th className="px-6 py-4 text-right">Preço</th>
                 <th className="px-6 py-4 text-right">24h</th>
                 <th className="px-6 py-4 text-right">Vol (24h)</th>
-                <th className="px-6 py-4 text-center">Trade Rápido</th>
-                <th className="px-6 py-4 text-center">Ação</th>
+                <th className="px-6 py-4 text-center">Ação Rápida</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -114,11 +133,12 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-slate-600 font-mono w-4">{index + 1}</span>
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center border border-slate-700 group-hover:border-indigo-500/50 transition-colors shadow-sm">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-700 group-hover:border-indigo-500/50 transition-all shadow-lg">
                         <img 
-                          src={getIconUrl(coin.symbol)} 
+                          src={coin.image} 
                           alt={coin.symbol} 
-                          className="w-full h-full p-1.5 object-contain"
+                          className="w-full h-full object-cover p-1"
+                          loading="lazy"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=1e293b&color=6366f1&bold=true`;
                           }}
@@ -131,13 +151,13 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-mono text-sm font-medium">
-                    ${coin.price > 1 ? coin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin.price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 })}
+                    {symbol}{coin.price > 1 ? coin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin.price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 })}
                   </td>
                   <td className={`px-6 py-4 text-right text-sm font-bold ${coin.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {coin.change24h.toFixed(2)}%
                   </td>
                   <td className="px-6 py-4 text-right text-sm text-slate-400 font-mono">
-                    ${(coin.volume24h / 1000000000).toFixed(2)}B
+                    {symbol}{(coin.volume24h / 1000000000).toFixed(2)}B
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-2">
@@ -154,19 +174,6 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                         Vend.
                       </button>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button 
-                      className="p-2 text-slate-400 hover:text-indigo-400 transition-all rounded-lg hover:bg-indigo-400/10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectCoin(coin.id);
-                      }}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </button>
                   </td>
                 </tr>
               ))}

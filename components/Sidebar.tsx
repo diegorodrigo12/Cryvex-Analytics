@@ -9,9 +9,10 @@ interface SidebarProps {
   setIsOpen: (open: boolean) => void;
   onLogout: () => void;
   userEmail: string;
+  isUpdating?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, userEmail }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, userEmail, isUpdating }) => {
   const menuItems: { id: View; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Painel Geral', icon: '📊' },
     { id: 'alerts', label: 'Alertas', icon: '🔔' },
@@ -78,8 +79,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
         </div>
 
         <div className="flex items-center gap-2 px-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="text-xs font-medium text-slate-500">Live Market Feed</span>
+          <div className={`w-2 h-2 rounded-full ${isUpdating ? 'bg-indigo-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`}></div>
+          <span className="text-xs font-medium text-slate-500">{isUpdating ? 'Sincronizando...' : 'Live Market Feed'}</span>
         </div>
       </div>
     </aside>
