@@ -8,13 +8,14 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   onLogout: () => void;
-  userEmail: string;
+  user: { email: string; plan: 'Free' | 'Pro' };
   isUpdating?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, userEmail, isUpdating }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, user, isUpdating }) => {
   const menuItems: { id: View; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Painel Geral', icon: '📊' },
+    { id: 'upcoming', label: 'Lançamentos', icon: '🚀' },
     { id: 'alerts', label: 'Alertas', icon: '🔔' },
     { id: 'news', label: 'Notícias', icon: '📰' },
     { id: 'premium', label: 'Cryvex Pro', icon: '💎' },
@@ -60,11 +61,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
         <div className="bg-slate-800/50 rounded-2xl p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-400">
-              {userEmail.substring(0, 2).toUpperCase()}
+              {user.email.substring(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-slate-300 font-medium truncate">{userEmail}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Plano Free</p>
+              <p className="text-xs text-slate-300 font-medium truncate">{user.email}</p>
+              <p className={`text-[10px] uppercase font-bold tracking-tighter ${user.plan === 'Pro' ? 'text-amber-400' : 'text-slate-500'}`}>
+                Plano {user.plan}
+              </p>
             </div>
           </div>
           <button 

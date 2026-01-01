@@ -4,7 +4,7 @@ export interface CryptoCurrency {
   symbol: string;
   name: string;
   price: number;
-  image: string; // Nova propriedade para ícones estáveis
+  image: string; 
   change1h: number;
   change24h: number;
   change7d: number;
@@ -17,6 +17,17 @@ export interface CryptoCurrency {
   };
   trend: 'Bullish' | 'Bearish' | 'Neutral';
   strength: 'Weak' | 'Medium' | 'Strong';
+}
+
+export interface UpcomingCoin {
+  id: string;
+  name: string;
+  symbol: string;
+  launchDate: string;
+  category: 'DeFi' | 'AI' | 'Meme' | 'Gaming' | 'Infrastructure';
+  hypeScore: number; // 0-100
+  summary: string;
+  platform: string;
 }
 
 export interface Alert {
@@ -39,7 +50,7 @@ export interface NewsItem {
   coins: string[];
 }
 
-export type View = 'dashboard' | 'detail' | 'alerts' | 'news' | 'premium';
+export type View = 'dashboard' | 'detail' | 'alerts' | 'news' | 'premium' | 'upcoming' | 'profile' | 'settings';
 
 export interface MarketHistory {
   time: string;

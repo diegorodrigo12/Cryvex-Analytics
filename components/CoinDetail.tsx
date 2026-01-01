@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, ReferenceLine
@@ -21,78 +21,79 @@ type ChartMode = 'original' | 'tradingview';
 const CoinDetail: React.FC<CoinDetailProps> = ({ coin, onCreateAlert, currency }) => {
   const [selectedInterval, setSelectedInterval] = useState<Interval>('1d');
   const [chartMode, setChartMode] = useState<ChartMode>('original');
-  const [hoverData, setHoverData] = useState<any>(null);
+  const [dynamicHistory, setDynamicHistory] = useState<any[]>([]);
+  const [visiblePoints, setVisiblePoints] = useState<number>(60);
   
-  const historyRef = useRef<any[]>([]);
-  const currentCoinIdRef = useRef<string | null>(null);
-  const currentIntervalRef = useRef<Interval | null>(null);
-
+  const coinPriceRef = useRef(coin.price);
   const symbol = currency === 'brl' ? 'R$' : '$';
-
   const BULL_COLOR = '#0ecb81';
   const BEAR_COLOR = '#f6465d';
-  const GRID_COLOR = '#1e2329';
-  const CROSSHAIR_COLOR = '#707a8a';
 
-  const generateInitialData = (points: number, startPrice: number, interval: Interval) => {
-    const data: any[] = [];
-    let currentPrice = startPrice;
-    
-    const volMap: Record<Interval, number> = {
-      '1s': 0.0003,
-      '15m': 0.0015,
-      '1h': 0.004,
-      '4h': 0.007,
-      '1d': 0.012,
-      '1w': 0.025
-    };
-    const volatility = volMap[interval] || 0.008;
-    
+  // Sincroniza o ref com o preço mais recente da API
+  useEffect(() => {
+    coinPriceRef.current = coin.price;
+  }, [coin.price]);
+
+  // Inicialização estável do histórico
+  useEffect(() => {
+    const points = 100;
+    const startPrice = coin.price;
+    const initialData = [];
     for (let i = 0; i < points; i++) {
-      const change = currentPrice * (Math.random() * volatility * 2 - volatility);
-      const close = currentPrice + change;
-      const volume = Math.random() * 800 + 400;
-      
-      data.push({
-        time: i.toString(),
-        price: close,
-        volume,
+      initialData.push({
+        time: new Date(Date.now() - (points - i) * 1000).toLocaleTimeString(),
+        price: startPrice + (Math.random() - 0.5) * (startPrice * 0.0005),
       });
-      currentPrice = close;
     }
-    return data;
-  };
+    setDynamicHistory(initialData);
+  }, [coin.id]);
 
-  const { chartData, minPrice, maxPrice } = useMemo(() => {
-    if (currentCoinIdRef.current !== coin.id || currentIntervalRef.current !== selectedInterval) {
-      const startPrice = coin.price * (1 - (coin.change24h / 100));
-      historyRef.current = generateInitialData(80, startPrice, selectedInterval);
-      currentCoinIdRef.current = coin.id;
-      currentIntervalRef.current = selectedInterval;
+  // Ticker de 1 segundo suave e resiliente
+  useEffect(() => {
+    if (selectedInterval !== '1s' || chartMode !== 'original') return;
+
+    const timer = setInterval(() => {
+      setDynamicHistory(prev => {
+        const lastPoint = prev[prev.length - 1];
+        // Atração suave para o preço real da API para evitar saltos bruscos
+        const currentPrice = coinPriceRef.current;
+        const drift = (Math.random() - 0.5) * (currentPrice * 0.0002);
+        const pull = (currentPrice - lastPoint.price) * 0.1; // Suaviza a transição para o novo preço real
+        const nextPrice = lastPoint.price + drift + pull;
+        
+        const newPoint = {
+          time: new Date().toLocaleTimeString(),
+          price: nextPrice
+        };
+        const updated = [...prev, newPoint];
+        return updated.slice(-300); // Mantém buffer maior
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedInterval, chartMode, coin.id]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (chartMode !== 'original') return;
+    const zoomSpeed = 4;
+    if (e.deltaY < 0) {
+      setVisiblePoints(prev => Math.max(15, prev - zoomSpeed));
+    } else {
+      setVisiblePoints(prev => Math.min(dynamicHistory.length, prev + zoomSpeed));
     }
+  }, [chartMode, dynamicHistory.length]);
 
-    const historical = historyRef.current;
-    const currentPoint = {
-      time: 'Agora',
-      price: coin.price,
-      volume: historical[historical.length - 1].volume * (0.8 + Math.random() * 0.4),
-    };
+  const zoomedData = useMemo(() => dynamicHistory.slice(-visiblePoints), [dynamicHistory, visiblePoints]);
 
-    const data = [...historical, currentPoint];
-
-    const allPrices = data.map(d => d.price);
-    const minP = Math.min(...allPrices);
-    const maxP = Math.max(...allPrices);
-    const padding = (maxP - minP) * 0.15;
-
-    return { 
-      chartData: data, 
-      minPrice: minP - padding, 
-      maxPrice: maxP + padding 
-    };
-  }, [coin.id, coin.price, selectedInterval]);
-
-  const latest = hoverData || (chartData.length > 0 ? chartData[chartData.length - 1] : null);
+  const { minPrice, maxPrice } = useMemo(() => {
+    if (zoomedData.length === 0) return { minPrice: 0, maxPrice: 100 };
+    const prices = zoomedData.map(d => d.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min;
+    const padding = range === 0 ? 1 : range * 0.15;
+    return { minPrice: min - padding, maxPrice: max + padding };
+  }, [zoomedData]);
 
   return (
     <div className="space-y-4">
@@ -101,191 +102,114 @@ const CoinDetail: React.FC<CoinDetailProps> = ({ coin, onCreateAlert, currency }
           <div className="relative">
             <img 
               src={coin.image} 
-              alt={coin.symbol}
-              className="w-12 h-12 rounded-full shadow-lg"
-              onError={(e) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=1e293b&color=6366f1&bold=true`}
+              alt={coin.symbol} 
+              className="w-12 h-12 rounded-full border border-slate-800" 
+              onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=1e293b&color=6366f1&bold=true`; }}
             />
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-950 ${coin.change24h >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-white tracking-tight">{coin.name}</h2>
-              <span className="text-slate-500 font-mono text-xs font-bold bg-slate-800 px-2 py-0.5 rounded uppercase">{coin.symbol} / {currency.toUpperCase()}</span>
+              <h2 className="text-2xl font-bold text-white">{coin.name}</h2>
+              <span className="text-slate-500 font-mono text-[10px] font-bold bg-slate-800 px-2 py-0.5 rounded uppercase">{coin.symbol}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className={`text-2xl font-mono font-bold ${coin.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {symbol}{coin.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded bg-slate-800 ${coin.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {coin.change24h > 0 ? '+' : ''}{coin.change24h}%
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${coin.change24h >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                {coin.change24h.toFixed(2)}%
               </span>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => onCreateAlert(coin.id, 'buy')} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all active:scale-95 shadow-xl shadow-emerald-500/20">COMPRAR</button>
-          <button onClick={() => onCreateAlert(coin.id, 'sell')} className="px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-bold transition-all active:scale-95 shadow-xl shadow-rose-500/20">VENDER</button>
+          <button onClick={() => onCreateAlert(coin.id, 'buy')} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 uppercase active:scale-95">Comprar</button>
+          <button onClick={() => onCreateAlert(coin.id, 'sell')} className="px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-rose-500/20 uppercase active:scale-95">Vender</button>
         </div>
       </div>
 
-      <div className="bg-[#0b0e11] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative">
-        <div className="flex items-center gap-6 px-4 py-2 border-b border-[#1e2329] bg-[#161a1e] flex-wrap">
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mr-2">Intervalo</span>
-            {intervals.map(t => (
-              <button 
-                key={t} 
-                onClick={() => setSelectedInterval(t)}
-                className={`px-2 py-1 rounded text-[11px] font-bold transition-all ${selectedInterval === t ? 'text-[#f0b90b] bg-white/5' : 'text-slate-400 hover:text-white'}`}
-              >
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>
-          
-          <div className="flex items-center gap-2">
-             <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-tighter">Gráfico de Linha</span>
-          </div>
-
-          <div className="ml-auto flex items-center gap-4">
-             <div className="flex bg-[#1e2329] p-0.5 rounded-lg border border-slate-800">
-               <button 
-                  onClick={() => setChartMode('original')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'original' ? 'bg-[#2b3139] text-white' : 'text-slate-500 hover:text-slate-300'}`}
-               >
-                 Original
-               </button>
-               <button 
-                  onClick={() => setChartMode('tradingview')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'tradingview' ? 'bg-[#2b3139] text-white' : 'text-slate-500 hover:text-slate-300'}`}
-               >
-                 Pro View
-               </button>
-             </div>
+      <div className="bg-[#0b0e11] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative" onWheel={handleWheel}>
+        <div className="flex items-center gap-4 px-4 py-2 border-b border-[#1e2329] bg-[#161a1e] overflow-x-auto custom-scrollbar">
+          {intervals.map(t => (
+            <button 
+              key={t} 
+              onClick={() => setSelectedInterval(t)} 
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all whitespace-nowrap ${selectedInterval === t ? 'text-[#f0b90b] bg-white/5 border border-white/10' : 'text-slate-500 hover:text-white'}`}
+            >
+              {t.toUpperCase()}
+            </button>
+          ))}
+          <div className="ml-auto flex bg-[#1e2329] p-0.5 rounded-lg border border-slate-800">
+             <button onClick={() => setChartMode('original')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'original' ? 'bg-[#2b3139] text-white' : 'text-slate-500 hover:text-slate-300'}`}>Cryvex View</button>
+             <button onClick={() => setChartMode('tradingview')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'tradingview' ? 'bg-[#2b3139] text-white' : 'text-slate-500 hover:text-slate-300'}`}>TradingView</button>
           </div>
         </div>
 
-        <div className="h-[500px] w-full relative group bg-[#0b0e11]">
+        <div className="h-[400px] w-full relative group bg-[#0b0e11]">
           {chartMode === 'original' ? (
-            <>
-              <div className="absolute top-4 left-4 z-10 select-none pointer-events-none">
-                {latest && (
-                  <div className="flex flex-col gap-1.5 bg-black/40 p-2 rounded-lg backdrop-blur-sm border border-white/5">
-                    <div className="flex items-center gap-x-4 text-[13px] font-mono">
-                      <div className="flex gap-2">
-                        <span className="text-slate-500 font-bold uppercase tracking-tighter text-[10px]">Preço:</span>
-                        <span className={coin.change24h >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                          {symbol}{latest.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-                        </span>
-                      </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={zoomedData} margin={{ top: 20, right: 70, bottom: 20, left: 0 }}>
+                <defs>
+                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="0" stroke="#1e2329" vertical={false} opacity={0.3} />
+                <XAxis dataKey="time" hide />
+                <YAxis orientation="right" domain={[minPrice, maxPrice]} axisLine={false} tickLine={false} tick={{ fill: '#707a8a', fontSize: 10 }} width={70} />
+                <Tooltip 
+                  isAnimationActive={false}
+                  content={({ active, payload }) => active && payload && payload.length > 0 && (
+                    <div className="bg-[#1e2329] border border-[#2b3139] p-2 rounded shadow-xl z-50">
+                      <p className="text-[10px] text-slate-500 mb-1">{payload[0].payload.time}</p>
+                      <p className="text-xs font-bold text-white">{symbol}{payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
-                      Intervalo: {selectedInterval} • Live Market
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart 
-                  data={chartData} 
-                  onMouseMove={(e: any) => e.activePayload && setHoverData(e.activePayload[0].payload)}
-                  onMouseLeave={() => setHoverData(null)}
-                  margin={{ top: 20, right: 80, bottom: 20, left: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="colorPriceLine" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="0" stroke={GRID_COLOR} vertical={false} />
-                  <XAxis dataKey="time" hide />
-                  <YAxis 
-                    orientation="right" 
-                    domain={[minPrice, maxPrice]} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#707a8a', fontSize: 11, fontWeight: 'bold' }} 
-                    width={80} 
-                  />
-                  <Tooltip content={() => null} cursor={{ stroke: CROSSHAIR_COLOR, strokeWidth: 1, strokeDasharray: '4 4' }} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} 
-                    fillOpacity={1} 
-                    fill="url(#colorPriceLine)" 
-                    strokeWidth={2} 
-                    isAnimationActive={false} 
-                  />
-                  <ReferenceLine 
-                    y={coin.price} 
-                    stroke={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} 
-                    strokeDasharray="4 2" 
-                    label={(props) => (
-                      <g>
-                        <rect 
-                          x={props.viewBox.width + props.viewBox.x} 
-                          y={props.viewBox.y - 10} 
-                          width={75} 
-                          height={20} 
-                          fill={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} 
-                          rx={4}
-                        />
-                        <text 
-                          x={props.viewBox.width + props.viewBox.x + 37.5} 
-                          y={props.viewBox.y + 4} 
-                          fill="white" 
-                          fontSize={10} 
-                          fontWeight="bold" 
-                          textAnchor="middle"
-                          fontFamily="monospace"
-                        >
-                          {coin.price.toFixed(coin.price < 1 ? 6 : 2)}
-                        </text>
-                      </g>
-                    )}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-              
-              <div className="absolute bottom-4 left-4 z-10 flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-black/40 px-3 py-1.5 rounded-md backdrop-blur-sm border border-white/5">
-                <div className="flex gap-1.5 items-center">
-                  <span>Vol 24h:</span>
-                  <span className="text-white">{symbol}{(coin.volume24h / 1e9).toFixed(2)}B</span>
-                </div>
-              </div>
-            </>
+                  )} 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="price" 
+                  stroke={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} 
+                  fillOpacity={1} 
+                  fill="url(#colorPrice)" 
+                  strokeWidth={2} 
+                  isAnimationActive={false} 
+                  connectNulls
+                />
+                <ReferenceLine y={coin.price} stroke={coin.change24h >= 0 ? BULL_COLOR : BEAR_COLOR} strokeDasharray="3 3" />
+              </AreaChart>
+            </ResponsiveContainer>
           ) : (
             <TradingViewWidget symbol={coin.symbol} interval={selectedInterval} />
+          )}
+
+          {selectedInterval === '1s' && chartMode === 'original' && (
+            <div className="absolute top-4 left-4 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full animate-pulse z-10 pointer-events-none">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-tighter">Live Ticker 1s</span>
+            </div>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <AiAnalysis coin={coin} />
-        </div>
+        <div className="lg:col-span-2"><AiAnalysis coin={coin} /></div>
         <div className="bg-[#161a1e] rounded-3xl border border-slate-800 p-6 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <h4 className="text-slate-400 font-bold text-xs uppercase tracking-widest">Resumo de Ativo</h4>
-            <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">ONLINE</span>
-          </div>
-          <div className="space-y-5">
-             <div className="flex justify-between items-center group">
-                <span className="text-slate-500 text-sm group-hover:text-slate-400 transition-colors">Market Cap</span>
-                <span className="text-white font-mono font-bold">{symbol}{(coin.marketCap / 1e9).toFixed(2)}B</span>
+          <h4 className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-6">Métricas do Ativo</h4>
+          <div className="space-y-4">
+             <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs">RSI (14)</span>
+                <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${coin.rsi > 70 ? 'text-rose-400 bg-rose-400/10' : coin.rsi < 30 ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-300 bg-slate-800'}`}>{coin.rsi}</span>
              </div>
-             <div className="flex justify-between items-center group">
-                <span className="text-slate-500 text-sm group-hover:text-slate-400 transition-colors">Volume 24h</span>
-                <span className="text-white font-mono font-bold">{symbol}{(coin.volume24h / 1e9).toFixed(2)}B</span>
+             <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs">Tendência</span>
+                <span className={`text-[10px] font-bold uppercase ${coin.trend === 'Bullish' ? 'text-emerald-400' : 'text-rose-400'}`}>{coin.trend}</span>
              </div>
-             <div className="flex justify-between items-center group">
-                <span className="text-slate-500 text-sm group-hover:text-slate-400 transition-colors">Força RSI</span>
-                <span className={`font-mono font-bold px-3 py-1 rounded-lg ${coin.rsi > 70 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : coin.rsi < 30 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-200'}`}>{coin.rsi}</span>
+             <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs">Força</span>
+                <span className="text-white text-[10px] font-bold uppercase">{coin.strength}</span>
              </div>
           </div>
         </div>

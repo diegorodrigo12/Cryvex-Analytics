@@ -62,15 +62,15 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
         <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-white">Mercado em Tempo Real ({currency.toUpperCase()})</h3>
+              <h3 className="text-lg font-bold text-white">Mercado ao Vivo ({currency.toUpperCase()})</h3>
               {isUpdating && <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>}
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-slate-500">Dados ao vivo via CoinGecko</p>
+              <p className="text-xs text-slate-500">Dados reais via CoinGecko API</p>
               {lastUpdated && (
                 <>
                   <span className="text-slate-700">•</span>
-                  <p className="text-[10px] text-slate-500 font-mono">Atualizado: {new Date(lastUpdated).toLocaleTimeString()}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">Última Ref: {new Date(lastUpdated).toLocaleTimeString()}</p>
                 </>
               )}
             </div>
@@ -88,30 +88,10 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
             </div>
 
             <div className="flex gap-1 p-1 bg-slate-800 rounded-xl overflow-x-auto custom-scrollbar">
-              <button 
-                onClick={() => setFilter('all')}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={() => setFilter('memes')}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'memes' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Memecoins 🐕
-              </button>
-              <button 
-                onClick={() => setFilter('gainers')}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'gainers' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Altas
-              </button>
-              <button 
-                onClick={() => setFilter('losers')}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'losers' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Baixas
-              </button>
+              <button onClick={() => setFilter('all')} className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+              <button onClick={() => setFilter('memes')} className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'memes' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Memecoins 🐕</button>
+              <button onClick={() => setFilter('gainers')} className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'gainers' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Altas</button>
+              <button onClick={() => setFilter('losers')} className={`px-3 py-1.5 text-xs rounded-lg transition-all font-bold whitespace-nowrap ${filter === 'losers' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Baixas</button>
             </div>
           </div>
         </div>
@@ -151,13 +131,15 @@ const Dashboard: React.FC<DashboardProps> = ({ cryptos, onSelectCoin, onCreateAl
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-mono text-sm font-medium">
-                    {symbol}{coin.price > 1 ? coin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin.price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 })}
+                    {symbol}{coin.price > 1 
+                      ? coin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                      : coin.price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 7 })}
                   </td>
                   <td className={`px-6 py-4 text-right text-sm font-bold ${coin.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {coin.change24h.toFixed(2)}%
                   </td>
                   <td className="px-6 py-4 text-right text-sm text-slate-400 font-mono">
-                    {symbol}{(coin.volume24h / 1000000000).toFixed(2)}B
+                    {symbol}{(coin.volume24h / 1000000).toFixed(1)}M
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-2">

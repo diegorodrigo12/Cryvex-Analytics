@@ -54,7 +54,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         setError('Este e-mail já está cadastrado.');
         return;
       }
-      setStep('verify'); // Move to SMS verification
+      setStep('verify'); // Move to Email verification
     }
   };
 
@@ -73,6 +73,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
 
@@ -114,16 +115,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         onChange={(e) => setName(e.target.value)}
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Telefone / WhatsApp</label>
-                      <input 
-                        type="tel" required
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
-                        placeholder="(11) 99999-9999"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                      />
-                    </div>
                   </>
                 )}
 
@@ -137,6 +128,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
+
+                {!isLogin && (
+                   <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Telefone (Opcional)</label>
+                    <input 
+                      type="tel"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+                      placeholder="(11) 99999-9999"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Senha</label>
@@ -153,7 +157,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   type="submit" 
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all mt-4 active:scale-[0.98]"
                 >
-                  {isLogin ? 'Entrar no Painel' : 'Continuar para Verificação'}
+                  {isLogin ? 'Entrar no Painel' : 'Enviar Código para o E-mail'}
                 </button>
               </form>
             </>
@@ -162,12 +166,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
                   <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Verifique seu celular</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">Verifique seu e-mail</h2>
                 <p className="text-slate-500 text-sm">
-                  Enviamos um código SMS para <span className="text-slate-300 font-bold">{phone}</span>.
+                  Enviamos um código de acesso temporário para <br/>
+                  <span className="text-indigo-400 font-bold">{email}</span>.
                 </p>
               </div>
 
@@ -197,8 +202,18 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   type="submit" 
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98]"
                 >
-                  Confirmar e Criar Conta
+                  Verificar e Ativar Conta
                 </button>
+
+                <div className="text-center space-y-2">
+                  <p className="text-[10px] text-slate-600 uppercase font-bold tracking-widest">Não recebeu?</p>
+                  <button 
+                    type="button"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium underline"
+                  >
+                    Reenviar código agora
+                  </button>
+                </div>
 
                 <button 
                   type="button"
