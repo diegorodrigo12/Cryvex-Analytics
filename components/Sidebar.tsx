@@ -7,9 +7,11 @@ interface SidebarProps {
   setCurrentView: (view: View) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  onLogout: () => void;
+  userEmail: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, userEmail }) => {
   const menuItems: { id: View; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Painel Geral', icon: '📊' },
     { id: 'alerts', label: 'Alertas', icon: '🔔' },
@@ -25,9 +27,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
   return (
     <aside className={`
       fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 border-r border-slate-800 transition-transform duration-300
+      flex flex-col
       ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
     `}>
-      <div className="p-6">
+      <div className="p-6 flex-1">
         <div className="flex items-center gap-2 mb-10">
           <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">C</div>
           <h1 className="text-xl font-bold tracking-tight text-white">Cryvex<span className="text-indigo-400">.</span></h1>
@@ -52,13 +55,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
         </nav>
       </div>
 
-      <div className="absolute bottom-0 left-0 w-full p-6 border-t border-slate-800">
+      <div className="p-6 space-y-4 border-t border-slate-800">
         <div className="bg-slate-800/50 rounded-2xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Status do Mercado</p>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-sm font-medium text-slate-300">Conectado</span>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-400">
+              {userEmail.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-slate-300 font-medium truncate">{userEmail}</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Plano Free</p>
+            </div>
           </div>
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-400/10 rounded-lg transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sair da Conta
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 px-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span className="text-xs font-medium text-slate-500">Live Market Feed</span>
         </div>
       </div>
     </aside>

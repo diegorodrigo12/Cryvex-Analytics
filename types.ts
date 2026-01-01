@@ -25,6 +25,7 @@ export interface Alert {
   value: number;
   active: boolean;
   createdAt: number;
+  intent?: 'buy' | 'sell'; // New: distinguish between buy/sell targets
 }
 
 export interface NewsItem {
